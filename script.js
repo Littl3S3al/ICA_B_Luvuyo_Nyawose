@@ -22,6 +22,11 @@ let windowHalfY = window.innerHeight / 2;
 let orbiting = false;
 let viewing = false;
 
+const next = document.querySelector('#next');
+const previous = document.querySelector('#previous');
+
+let newLocation = 22.5;
+
 
 
 // three.js functions
@@ -37,7 +42,7 @@ const main  = () => {
 
     // camera
     const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 15000 );
-    camera.position.set( 0, 10, 100 );
+    camera.position.set( 0, 20, 110);
 
 
     // scene
@@ -58,7 +63,7 @@ const main  = () => {
         const intensity = intense;
         const light = new THREE.SpotLight(color, intensity);
         light.castShadow = true;
-        light.position.set(0, top, camera.position.z);
+        light.position.set(0, top, camera.position.z -10);
         light.target.position.set(0, 0, 0);
         light.penumbra = 1;
         light.angle = angle;
@@ -68,9 +73,9 @@ const main  = () => {
         parent.add(light.target);
     }
 
-    addPointLight(0xFFFFFF, 0.8, scene, 1, 50, 10, 1000);
+    addPointLight(0xFFFFFF, 0.7, scene, 1, 50, 10, 1000);
 
-    scene.add( new THREE.AmbientLight( 0xffffff, 0.6 ) );
+    scene.add( new THREE.AmbientLight( 0xffffff, 0.5 ) );
 
     
 
@@ -88,13 +93,14 @@ const main  = () => {
         concrete.wrapS = THREE.RepeatWrapping;
         concrete.wrapT = THREE.RepeatWrapping;
         concrete.magFilter = THREE.NearestFilter;
-        concrete.repeat.set(radialSegments/20, height/20);
+        concrete.repeat.set(radialSegments/30, height/30);
 
         const geometry = new THREE.CylinderGeometry( radius, radius, height, radialSegments,radialSegments,true );
-        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide});
+        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide, shininess: 0.2});
         column = new THREE.Mesh(geometry, material);
         column.rotation.z = 180* Math.PI/180;
         column.position.y = height/2;
+        column.rotation.y = 22.5* Math.PI/180;
     }
     {
         const innerRadius = 20;  
@@ -108,16 +114,47 @@ const main  = () => {
         concrete.wrapS = THREE.RepeatWrapping;
         concrete.wrapT = THREE.RepeatWrapping;
         concrete.magFilter = THREE.NearestFilter;
-        concrete.repeat.set(outerRadius/10, outerRadius/10);
+        concrete.repeat.set(outerRadius/15, outerRadius/15);
 
-        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide});
+        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide, shininess: 0.2});
 
         roof = new THREE.Mesh(geometry, material);
-        roof.position.y = 40;
+        roof.position.y = -20;
         roof.rotation.x = 90* Math.PI/180;
 
         floor = new THREE.Mesh(geometry, material);
+        floor.position.y = 20;
         floor.rotation.x = 90* Math.PI/180;
+
+    }
+
+    let walls = [];
+    const centerWidth = 0;
+    const centerHeight = 0;
+    const width = 80;  
+    const height = 40;
+
+    const concrete = textureLoader.load('assets/concrete.jpg');
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.wrapS = THREE.RepeatWrapping;
+        concrete.wrapT = THREE.RepeatWrapping;
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.repeat.set(width/30, height/30);
+
+        for(let i = 0; i < 8; i++){
+            createWall(45*i);
+        }
+
+    function createWall(angle){centerWidth
+        const centerGeometery = new THREE.PlaneBufferGeometry(centerWidth, centerHeight);
+        const geometry = new THREE.PlaneBufferGeometry(width, height);
+        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide, shininess: 0.2});
+        const centerMaterial = new THREE.MeshBasicMaterial({color: 0xffffff})
+        const center = new THREE.Mesh(centerGeometery, centerMaterial);
+        center.rotation.y = angle * Math.PI/180;
+        const wall = new THREE.Mesh(geometry, material);
+        wall.position.x = 20 + width/2;
+        walls.push({center, wall});
 
     }
         
@@ -129,8 +166,13 @@ const main  = () => {
     loadManager.onLoad = () => {
         loadingElem.style.display = 'none';
         scene.add(column);
-        scene.add(roof);
-        scene.add(floor);
+        column.add(roof);
+        column.add(floor);
+
+        walls.forEach(wall => {
+            column.add(wall.center);
+            wall.center.add(wall.wall);
+        })
         
     };
 
@@ -199,6 +241,11 @@ const main  = () => {
                 itemSelected = true;
                 redColor(pickHelper.pickedObject, true);
             }
+        }
+
+        const location = newLocation * Math.PI/180;
+        if(column.rotation.y !== location){
+            column.rotation.y += ((location - column.rotation.y) )/100
         }
         
         renderer.setPixelRatio( window.devicePixelRatio );
@@ -313,3 +360,10 @@ function openWindow(){
     popupWindow.style.zIndex = 100;
     viewing = true;
 }
+
+next.addEventListener('click', () => {
+    newLocation -= 45;
+});
+previous.addEventListener('click', () => {
+    newLocation += 45;
+})
