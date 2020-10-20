@@ -1,5 +1,6 @@
 import * as THREE from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/build/three.module.js';
 import {OrbitControls} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/controls/OrbitControls.js';
+import {GLTFLoader} from 'https://threejsfundamentals.org/threejs/resources/threejs/r119/examples/jsm/loaders/GLTFLoader.js';
 
 
 
@@ -154,7 +155,33 @@ const main  = () => {
         center.rotation.y = angle * Math.PI/180;
         const wall = new THREE.Mesh(geometry, material);
         wall.position.x = 20 + width/2;
+
+        makeLens(wall);
+
+
         walls.push({center, wall});
+
+    }
+
+
+    function makeLens(wall) {
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.load('assets/lens.gltf', (gltf) => {
+            const root = gltf.scene;
+            wall.add(root);
+            const material = new THREE.MeshPhongMaterial({color: 0xA93226 });;
+            root.children[0].material = material;
+            root.position.set(-width/3, -height/2, 0);
+        });
+        gltfLoader.load('assets/lens.gltf', (gltf) => {
+            const root = gltf.scene;
+            wall.add(root);
+            const material = new THREE.MeshPhongMaterial({color: 0xA93226 });;
+            root.children[0].material = material;
+            root.rotation.x = 180 * Math.PI/180;
+            root.position.set(-width/3, height/2.5, 0);
+        });
+
 
     }
         
