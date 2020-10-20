@@ -10,10 +10,6 @@ const threeJsWindow = document.querySelector('#three-js-container');
 const popupWindow = document.querySelector('.popup-window');
 const closeBtn = document.querySelector('#btn-close');
 
-const mapBtn = document.querySelector('.map');
-
-const content = document.querySelector('.content');
-
 let currentObject;
 
 // loader
@@ -39,30 +35,17 @@ const main  = () => {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // bring in audio listener
-    const listener = new THREE.AudioListener();
-    const audioLoader = new THREE.AudioLoader();
-
     // camera
     const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 15000 );
-    camera.position.set( 0, 2, 2 );
+    camera.position.set( 0, 10, 100 );
 
 
     // scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color( 0x000000 );
-    scene.fog = new THREE.FogExp2( 0x000000, 0.01 );
 
     // controls
     const controls = new OrbitControls( camera, renderer.domElement );
- //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-    controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 10;
-    controls.maxDistance = 100;
-    controls.maxPolarAngle = Math.PI / 2;
-    controls.target.set(0, 15, 0);
+
 
     
 
@@ -75,8 +58,8 @@ const main  = () => {
         const intensity = intense;
         const light = new THREE.SpotLight(color, intensity);
         light.castShadow = true;
-        light.position.set(0, top, 0);
-        light.target.position.set(-4, 0, -4);
+        light.position.set(0, top, camera.position.z);
+        light.target.position.set(0, 0, 0);
         light.penumbra = 1;
         light.angle = angle;
         light.far = far;
@@ -85,110 +68,69 @@ const main  = () => {
         parent.add(light.target);
     }
 
-    addPointLight(0xFFFFFF, 1, scene, 1, 50, 500, 1000);
+    addPointLight(0xFFFFFF, 0.8, scene, 1, 50, 10, 1000);
 
     scene.add( new THREE.AmbientLight( 0xffffff, 0.6 ) );
 
-    // set up ground plane
-    const groundSize = 300;
-    const groundTexture = textureLoader.load('assets/grid.png');
-    groundTexture.magFilter = THREE.NearestFilter;
-    groundTexture.wrapS = THREE.RepeatWrapping;
-    groundTexture.wrapT = THREE.RepeatWrapping;
-    const repeats = groundSize / 8;
-    groundTexture.repeat.set(repeats, repeats);
-
-    const planeGeo = new THREE.PlaneBufferGeometry(groundSize, groundSize);
-    const planeMat = new THREE.MeshPhongMaterial({map: groundTexture});
-    planeMat.transparent = true;
-    planeMat.alphaTest = 0.1;
-
-    const mapMesh = new THREE.Mesh(planeGeo, planeMat);
-    mapMesh.receiveShadow = true;
-    mapMesh.rotation.x = Math.PI * -.5;
-    mapMesh.rotation.z = Math.PI/180 *45;
-    mapMesh.position.y = -2;
-
     
-    // add in random pyramids
-    const beaconTexture = textureLoader.load('assets/grid.png');
-    beaconTexture.magFilter = THREE.NearestFilter;
-    beaconTexture.wrapS = THREE.RepeatWrapping;
-    beaconTexture.wrapT = THREE.RepeatWrapping;
-    const beaconrepeats = 2;
-    beaconTexture.repeat.set(beaconrepeats, beaconrepeats);
-    var material = new THREE.MeshPhongMaterial( { map: beaconTexture, color: 0xffffff } );
 
-    for ( var i = 0; i < 100; i ++ ) {
-        var height = Math.random() * 5;
-        var geometry = new THREE.CylinderBufferGeometry( 0, 4, height, 4, 1 );
+    // add two torus
+    let column;
+    let roof;
+    let floor;
 
-        var mesh = new THREE.Mesh( geometry, material );
-        mesh.position.x = Math.random() * 160 - 80;
-        mesh.position.y = height/2;
-        mesh.position.z = Math.random() * 160 - 80;
-        mesh.updateMatrix();
-        mesh.matrixAutoUpdate = false;
-        scene.add( mesh );
-
-    }
-
-    // add 5 planes
-    var photos = [];
-    var positions = [
-        {x: -30, z: 0}, {x: -10, z: -30}, {x: 10, z: -25}, {x: 40, z: 1}, {x: 20, z: 10}
-    ]
-    for ( var i = 0; i < 5; i ++){
-        var texture = textureLoader.load(`assets/${i+1}.png`);
-        var photoMaterial = new THREE.MeshPhongMaterial({color: 'rgb(255, 255, 255)', map: texture});
-        photoMaterial.transparent = true;
-        photoMaterial.alphaTest = 0.1;
-        photoMaterial.side = THREE.DoubleSide;
-        var width = 8;
-        var height = 8;
-        var geometry = new THREE.PlaneBufferGeometry(width, height);
-
-        var beaconGeometry = new THREE.CylinderBufferGeometry( 0, 4, 9, 4, 1 );
-        var mesh = new THREE.Mesh( beaconGeometry, material );
-        mesh.position.y = 4.5;
-        mesh.position.x = positions[i].x;
-        mesh.position.z = positions[i].z;
-
-        scene.add(mesh);
-
-        var photoMesh = new THREE.Mesh(geometry, photoMaterial);
-        photoMesh.name = i + 1;
-        photoMesh.position.y = height/2 + 11;
-        photoMesh.position.x = positions[i].x;
-        photoMesh.position.z = positions[i].z;
-        photos.push(photoMesh);
-        photoMesh.lookAt(0, height/2 + 5.5, 0);
-    }
-
-
-    // add kartographi logo
-    var logo;
     {
-        var kartographiTexture = textureLoader.load('assets/logo.png');
-        var logoMaterial = new THREE.MeshPhongMaterial({map: kartographiTexture });
-        logoMaterial.transparent = true;
-        logoMaterial.alphaTest = 0.1;
-        logoMaterial.side = THREE.DoubleSide;
-        var logoGeomery = new THREE.PlaneBufferGeometry( 30 , 10 );
-        logo = new THREE.Mesh( logoGeomery, logoMaterial );
-        logo.position.set(0, 15 ,0);
-        logo.lookAt(0, 15, 0 );
-    }
-    addPointLight(0xFF0000, 1, logo, 1, 50, 500, 1000);
+        const radius = 20;
+        const height = 40;
+        const radialSegments = 100;
+        const concrete = textureLoader.load('assets/concrete.jpg');
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.wrapS = THREE.RepeatWrapping;
+        concrete.wrapT = THREE.RepeatWrapping;
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.repeat.set(radialSegments/20, height/20);
 
+        const geometry = new THREE.CylinderGeometry( radius, radius, height, radialSegments,radialSegments,true );
+        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide});
+        column = new THREE.Mesh(geometry, material);
+        column.rotation.z = 180* Math.PI/180;
+        column.position.y = height/2;
+    }
+    {
+        const innerRadius = 20;  
+        const outerRadius = 100;  
+        const thetaSegments = 100;  
+        const geometry = new THREE.RingBufferGeometry(
+            innerRadius, outerRadius, thetaSegments);
+
+        const concrete = textureLoader.load('assets/concrete.jpg');
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.wrapS = THREE.RepeatWrapping;
+        concrete.wrapT = THREE.RepeatWrapping;
+        concrete.magFilter = THREE.NearestFilter;
+        concrete.repeat.set(outerRadius/10, outerRadius/10);
+
+        const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide});
+
+        roof = new THREE.Mesh(geometry, material);
+        roof.position.y = 40;
+        roof.rotation.x = 90* Math.PI/180;
+
+        floor = new THREE.Mesh(geometry, material);
+        floor.rotation.x = 90* Math.PI/180;
+
+    }
+        
+
+
+
+    loadingElem.style.display = 'none';
 
     loadManager.onLoad = () => {
         loadingElem.style.display = 'none';
-        scene.add(mapMesh); 
-        photos.forEach( photo => {
-            scene.add(photo);
-        })
-        scene.add(logo);
+        scene.add(column);
+        scene.add(roof);
+        scene.add(floor);
         
     };
 
@@ -249,16 +191,6 @@ const main  = () => {
         let itemSelected = false;
         window.addEventListener('resize', onWindowResize, false);
 
-        // photos.forEach(photo => {
-        //     photo.lookAt(camera.position);
-        // })
-
-        // logo.lookAt(camera.position);
-        if(logo.position.z > -50){
-            logo.position.z -= 0.1;
-            logo.position.y += 0.05;
-        }
-
         pickHelper.pick(pickPosition, scene, camera);
         
         if(pickHelper.pickedObject && !orbiting){
@@ -268,12 +200,6 @@ const main  = () => {
                 redColor(pickHelper.pickedObject, true);
             }
         }
-
-        photos.forEach(photo => {
-            if(!itemSelected){
-                redColor(photo, false);
-            }
-        })
         
         renderer.setPixelRatio( window.devicePixelRatio );
         renderer.render(scene, camera);
@@ -286,16 +212,6 @@ const main  = () => {
 
     requestAnimationFrame(render);
     controls.update();
-
-    const redColor = (object, red) => {
-        let g = object.material.color.g;
-        let b = object.material.color.b;
-        if( g < 1 && !red){ g += 0.05 };
-        if( b < 1 && !red){ b += 0.05 };
-        if( g > 0.5 && red){ g -= 0.05 };
-        if( b > 0.5 && red){ b -= 0.05 };
-        object.material.color.setRGB(1, g, b);
-    }
 
 
     function getCanvasRelativePosition(event) {
@@ -320,10 +236,6 @@ const main  = () => {
     });
 
 	function clearPickPosition() {
-		// unlike the mouse which always has a position
-		// if the user stops touching the screen we want
-		// to stop picking. For now we just pick a value
-		// unlikely to pick something
 		pickPosition.x = -100000;
 		pickPosition.y = -100000;
   }
@@ -378,20 +290,11 @@ window.addEventListener('mouseup', () => {
 
 const checkForClick = () => {
     if(!orbiting && !viewing && currentObject){
-        openWindow();
-        content.innerHTML = `<h1>${currentObject}</h1>`;
         console.log(currentObject);
     }
     currentObject = undefined;
 }
 
-mapBtn.addEventListener('click', () => {
-    openWindow();
-    console.log('map');
-    content.innerHTML = `
-    <iframe src="https://www.google.com/maps/d/u/0/embed?mid=185hgHvJrVUHgfIali6XiCCPpILO3pvKf"></iframe>
-    `;
-})
 
 closeBtn.addEventListener('click', () => {
     closeWindow();
