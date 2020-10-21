@@ -51,6 +51,16 @@ const main  = () => {
 
     // controls
     const controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 40;
+    controls.maxDistance = 120;
+    controls.minPolarAngle = 70 * Math.PI/180;
+    controls.maxPolarAngle = 85 * Math.PI/180;
+    controls.enableKeys = false;
+    controls.maxAzimuthAngle = Math.PI * 0.07;
+    controls.minAzimuthAngle = Math.PI * -0.07;
 
 
     
@@ -142,9 +152,9 @@ const main  = () => {
         concrete.magFilter = THREE.NearestFilter;
         concrete.repeat.set(width/30, height/30);
 
-        for(let i = 0; i < 8; i++){
-            createWall(45*i);
-        }
+    for(let i = 0; i < 8; i++){
+        createWall(45*i);
+    }
 
     function createWall(angle){centerWidth
         const centerGeometery = new THREE.PlaneBufferGeometry(centerWidth, centerHeight);
@@ -156,39 +166,45 @@ const main  = () => {
         const wall = new THREE.Mesh(geometry, material);
         wall.position.x = 20 + width/2;
 
-        makeLens(wall);
-
-
         walls.push({center, wall});
 
     }
 
+    let lenses = [];
+    for(let i = 0; i < 16; i+=2){
+        makeLens(i + 1);
+    }
+    console.log(lenses);
 
-    function makeLens(wall) {
+    function makeLens(index) {
         const gltfLoader = new GLTFLoader();
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
-            wall.add(root);
-            const material = new THREE.MeshPhongMaterial({color: 0xA93226 });;
-            root.children[0].material = material;
-            root.position.set(-width/3, -height/2, 0);
+            const texture = textureLoader.load(assets + index + '.jpg');
+            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture });;
+            root.children[2].material = material;
+            root.rotation.y = 90* Math.PI/180;
+            root.position.y = -height/4;
+            lenses.push(root);
         });
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
-            wall.add(root);
-            const material = new THREE.MeshPhongMaterial({color: 0xA93226 });;
-            root.children[0].material = material;
-            root.rotation.x = 180 * Math.PI/180;
-            root.position.set(-width/3, height/2.5, 0);
+            const texture = textureLoader.load(assets + (index + 1) + '.jpg');
+            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture });;
+            root.children[2].material = material;
+            root.rotation.y = - Math.PI /2;
+            root.position.y = -height/4;
+            lenses.push(root);
         });
 
 
     }
+
         
 
 
+    let barriers = [];
 
-    loadingElem.style.display = 'none';
 
     loadManager.onLoad = () => {
         loadingElem.style.display = 'none';
@@ -199,9 +215,23 @@ const main  = () => {
         walls.forEach(wall => {
             column.add(wall.center);
             wall.center.add(wall.wall);
+        });
+
+        console.log(walls);
+        lenses.forEach((lens, index) => {
+            if(index % 2 === 0){
+                //even number
+                const barrier = walls[index/2].wall;
+                barrier.add(lens);
+            } else {
+                const barrier = walls[(index - 1)/2].wall;
+                barrier.add(lens);
+            }
         })
         
     };
+
+    
 
     loadManager.onProgress = (urlOfLastItemLoaded, itemsLoaded, itemsTotal) => {
         const progress = itemsLoaded / itemsTotal*100;
