@@ -35,7 +35,7 @@ const main  = () => {
     const canvas = document.querySelector('#c');
 
     // renderer
-    const renderer = new THREE.WebGLRenderer({canvas, antialias: true});
+    const renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true,});
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
     renderer.shadowMap.enabled = true;
@@ -43,7 +43,7 @@ const main  = () => {
 
     // camera
     const camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 15000 );
-    camera.position.set( 0, 20, 110);
+    camera.position.set( 0, 500, 0);
 
 
     // scene
@@ -51,16 +51,6 @@ const main  = () => {
 
     // controls
     const controls = new OrbitControls( camera, renderer.domElement );
-    controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-    controls.dampingFactor = 0.05;
-    controls.screenSpacePanning = false;
-    controls.minDistance = 40;
-    controls.maxDistance = 120;
-    controls.minPolarAngle = 70 * Math.PI/180;
-    controls.maxPolarAngle = 85 * Math.PI/180;
-    controls.enableKeys = false;
-    controls.maxAzimuthAngle = Math.PI * 0.07;
-    controls.minAzimuthAngle = Math.PI * -0.07;
 
 
     
@@ -74,7 +64,7 @@ const main  = () => {
         const intensity = intense;
         const light = new THREE.SpotLight(color, intensity);
         light.castShadow = true;
-        light.position.set(0, top, camera.position.z -10);
+        light.position.set(0, top, 140);
         light.target.position.set(0, 0, 0);
         light.penumbra = 1;
         light.angle = angle;
@@ -86,7 +76,7 @@ const main  = () => {
 
     addPointLight(0xFFFFFF, 0.7, scene, 1, 50, 10, 1000);
 
-    scene.add( new THREE.AmbientLight( 0xffffff, 0.5 ) );
+    scene.add( new THREE.AmbientLight( 0xffffff, 0.1 ) );
 
     
 
@@ -94,6 +84,7 @@ const main  = () => {
     let column;
     let roof;
     let floor;
+    let env;
 
     {
         const radius = 20;
@@ -139,6 +130,16 @@ const main  = () => {
 
     }
 
+    {
+        var geometry = new THREE.SphereBufferGeometry( 500, 60, 40 );
+        geometry.scale( - 1, 1, 1 );
+        var texture = textureLoader.load( assets + 'env.jpg' );
+        var material = new THREE.MeshBasicMaterial( { map: texture } );
+        env = new THREE.Mesh( geometry, material );
+        env.position.y = -100;
+        env.rotation.x = Math.PI;
+    }
+
     let walls = [];
     const centerWidth = 0;
     const centerHeight = 0;
@@ -174,26 +175,26 @@ const main  = () => {
     for(let i = 0; i < 16; i+=2){
         makeLens(i + 1);
     }
-    console.log(lenses);
 
     function makeLens(index) {
         const gltfLoader = new GLTFLoader();
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
             const texture = textureLoader.load(assets + index + '.jpg');
-            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture });;
-            root.children[2].material = material;
+            const material = new THREE.MeshPhongMaterial({map: texture});;
+            root.children[0].material = material;
             root.rotation.y = 90* Math.PI/180;
-            root.position.y = -height/4;
+            root.position.y = -height/10;
             lenses.push(root);
+            console.log(root)
         });
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
             const texture = textureLoader.load(assets + (index + 1) + '.jpg');
-            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture });;
-            root.children[2].material = material;
+            const material = new THREE.MeshPhongMaterial({map: texture});;
+            root.children[0].material = material;
             root.rotation.y = - Math.PI /2;
-            root.position.y = -height/4;
+            root.position.y = -height/10;
             lenses.push(root);
         });
 
@@ -217,7 +218,6 @@ const main  = () => {
             wall.center.add(wall.wall);
         });
 
-        console.log(walls);
         lenses.forEach((lens, index) => {
             if(index % 2 === 0){
                 //even number
@@ -227,7 +227,9 @@ const main  = () => {
                 const barrier = walls[(index - 1)/2].wall;
                 barrier.add(lens);
             }
-        })
+        });
+
+        column.add(env);
         
     };
 
@@ -285,7 +287,36 @@ const main  = () => {
     
     }
 
+    let intro = true;
+    let controlsReset = true;
+
     const render = () => {
+
+        if(camera.position.y > 30 && intro){
+            camera.position.y -= camera.position.y/100;
+        } else if (camera.position.z < 150 && intro){
+            camera.position.z ++;
+        } else {
+            intro = false;
+        }
+        if(!intro && controlsReset){
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 40;
+            controls.maxDistance = 150;
+            controls.minPolarAngle = 70 * Math.PI/180;
+            controls.maxPolarAngle = 85 * Math.PI/180;
+            controls.enableKeys = false;
+            controls.maxAzimuthAngle = Math.PI * 0.07;
+            controls.minAzimuthAngle = Math.PI * -0.07;
+            controls.panSpeed = 0.2;
+            controls.rotateSpeed = 0.2;
+            controls.zoomSpeed = 0.2;
+
+            controlsReset = false;
+        }
+        camera.lookAt(0, 0, 0);
         currentObject = undefined;
         let itemSelected = false;
         window.addEventListener('resize', onWindowResize, false);
@@ -394,7 +425,6 @@ window.addEventListener('mouseup', () => {
 
 const checkForClick = () => {
     if(!orbiting && !viewing && currentObject){
-        console.log(currentObject);
     }
     currentObject = undefined;
 }
