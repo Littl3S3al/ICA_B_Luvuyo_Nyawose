@@ -23,10 +23,17 @@ let windowHalfY = window.innerHeight / 2;
 let orbiting = false;
 let viewing = false;
 
+let clientX = 0;
+
+
+
+
 const next = document.querySelector('#next');
 const previous = document.querySelector('#previous');
 
-let newLocation = 22.5;
+let newLocation = 45 + 22.5;
+
+let location = 1;
 
 
 
@@ -75,6 +82,7 @@ const main  = () => {
     }
 
     addPointLight(0xFFFFFF, 0.7, scene, 1, 50, 10, 1000);
+    addPointLight(0xffffff, 1, scene, 1, 0, camera.position.y, 600)
 
     scene.add( new THREE.AmbientLight( 0xffffff, 0.1 ) );
 
@@ -85,6 +93,8 @@ const main  = () => {
     let roof;
     let floor;
     let env;
+
+    // center column
 
     {
         const radius = 20;
@@ -104,6 +114,8 @@ const main  = () => {
         column.position.y = height/2;
         column.rotation.y = 22.5* Math.PI/180;
     }
+
+    // floor and roof
     {
         const innerRadius = 20;  
         const outerRadius = 100;  
@@ -130,6 +142,7 @@ const main  = () => {
 
     }
 
+    // equirectangular environment
     {
         var geometry = new THREE.SphereBufferGeometry( 500, 60, 40 );
         geometry.scale( - 1, 1, 1 );
@@ -154,14 +167,14 @@ const main  = () => {
         concrete.repeat.set(width/30, height/30);
 
     for(let i = 0; i < 8; i++){
-        createWall(45*i);
+        createWall(-45*i);
     }
 
     function createWall(angle){centerWidth
         const centerGeometery = new THREE.PlaneBufferGeometry(centerWidth, centerHeight);
         const geometry = new THREE.PlaneBufferGeometry(width, height);
         const material = new THREE.MeshPhongMaterial({map: concrete, side: THREE.DoubleSide, shininess: 0.2});
-        const centerMaterial = new THREE.MeshBasicMaterial({color: 0xffffff})
+        const centerMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0})
         const center = new THREE.Mesh(centerGeometery, centerMaterial);
         center.rotation.y = angle * Math.PI/180;
         const wall = new THREE.Mesh(geometry, material);
@@ -172,7 +185,7 @@ const main  = () => {
     }
 
     let lenses = [];
-    for(let i = 0; i < 16; i+=2){
+    for(let i = 0; i < walls.length; i++){
         makeLens(i + 1);
     }
 
@@ -180,31 +193,34 @@ const main  = () => {
         const gltfLoader = new GLTFLoader();
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
-            const texture = textureLoader.load(assets + index + '.jpg');
-            const material = new THREE.MeshPhongMaterial({map: texture});;
+            // const texture = textureLoader.load(assets + index + '.jpg');
+            const texture = textureLoader.load(assets + '1.jpg');
+            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture});;
             root.children[0].material = material;
+            root.children[0].name = 'a' + index;
             root.rotation.y = 90* Math.PI/180;
             root.position.y = -height/10;
+            root.position.x = 15;
             lenses.push(root);
-            console.log(root)
         });
         gltfLoader.load('assets/lens.gltf', (gltf) => {
             const root = gltf.scene;
-            const texture = textureLoader.load(assets + (index + 1) + '.jpg');
-            const material = new THREE.MeshPhongMaterial({map: texture});;
+            // const texture = textureLoader.load(assets + (index + 1) + '.jpg');
+            const texture = textureLoader.load(assets + '2.jpg');
+            const material = new THREE.MeshPhongMaterial({color: 0xffffff, map: texture});;
             root.children[0].material = material;
+            if (index > 1){ root.children[0].name = 'b' + (index -1 );}
+            else{root.children[0].name = 'b' + (8);}
+            
             root.rotation.y = - Math.PI /2;
             root.position.y = -height/10;
+            root.position.x = 15;
             lenses.push(root);
         });
 
 
     }
 
-        
-
-
-    let barriers = [];
 
 
     loadManager.onLoad = () => {
@@ -213,9 +229,10 @@ const main  = () => {
         column.add(roof);
         column.add(floor);
 
-        walls.forEach(wall => {
+        walls.forEach((wall, index) => {
             column.add(wall.center);
             wall.center.add(wall.wall);
+            wall.wall.name = index;
         });
 
         lenses.forEach((lens, index) => {
@@ -252,17 +269,24 @@ const main  = () => {
     pick(normalizedPosition, scene, camera) {
       // restore the color if there is a picked object
       if (this.pickedObject) {
-        this.pickedObject = undefined;
+        this.pickedObject = null;
       }
 
       // cast a ray through the frustum
       this.raycaster.setFromCamera(normalizedPosition, camera);
       // get the list of objects the ray intersected
-      const intersectedObjects = this.raycaster.intersectObjects(scene.children);
-      if (intersectedObjects.length) {
-        // pick the first object. It's the closest one
-        this.pickedObject = intersectedObjects[0].object;
-      }
+      
+      
+      lenses.forEach(lens => {
+        var intersectedObjects = this.raycaster.intersectObjects(lens.children);
+        if (intersectedObjects.length && this.pickedObject === null && clientX < window.innerWidth/2) {
+          // pick the first object. It's the closest one
+          this.pickedObject = intersectedObjects[0].object;
+        //   console.log(this.pickedObject)
+        } else if (intersectedObjects.length && clientX > window.innerWidth/2){
+            this.pickedObject = intersectedObjects[0].object;
+        }
+      })
     }
   }
 
@@ -316,20 +340,30 @@ const main  = () => {
 
             controlsReset = false;
         }
-        camera.lookAt(0, 0, 0);
+        if(controlsReset){
+            camera.lookAt(0, 0, 0);
+        }
+
+
         currentObject = undefined;
         let itemSelected = false;
         window.addEventListener('resize', onWindowResize, false);
 
         pickHelper.pick(pickPosition, scene, camera);
         
-        if(pickHelper.pickedObject && !orbiting){
+        if(pickHelper.pickedObject){
             if(pickHelper.pickedObject.name){
-                currentObject = pickHelper.pickedObject.name;
+                currentObject = pickHelper.pickedObject;
                 itemSelected = true;
-                redColor(pickHelper.pickedObject, true);
+                color(currentObject, true);
+
+                console.log(currentObject.name)
             }
         }
+
+        lenses.forEach(lens => {
+            color(lens.children[0], false);
+        })
 
         const location = newLocation * Math.PI/180;
         if(column.rotation.y !== location){
@@ -347,6 +381,16 @@ const main  = () => {
 
     requestAnimationFrame(render);
     controls.update();
+
+    const color = (object, bool) => {
+        let g = object.material.color.g;
+        let b = object.material.color.b;
+        if( g < 1 && !bool){ g += 0.05/4 };
+        if( b < 1 && !bool){ b += 0.05/4 };
+        if( g > 0.5 && bool){ g -= 0.05/2 };
+        if( b > 0 && bool){ b -= 0.1/2 };
+        object.material.color.setRGB(1, g, b);
+    }
 
 
     function getCanvasRelativePosition(event) {
@@ -450,7 +494,33 @@ function openWindow(){
 
 next.addEventListener('click', () => {
     newLocation -= 45;
+    if(location < 8){ location ++}
+    else {location = 1}
+    console.log(location);
 });
 previous.addEventListener('click', () => {
     newLocation += 45;
+    if(location > 1){ location --}
+    else {location = 8}
+    console.log(location);
 })
+
+next.addEventListener('touchend', () => {
+    newLocation -= 45;
+    if(location < 8){ location ++}
+    else {location = 1}
+    console.log(location);
+});
+previous.addEventListener('touchend', () => {
+    newLocation += 45;
+    if(location > 1){ location --}
+    else {location = 8}
+    console.log(location);
+})
+
+document.addEventListener('mousemove', e => {
+    clientX = e.clientX;
+});
+document.addEventListener('touchstart', e => {
+   clientX = e.touches[0].clientX;
+});
