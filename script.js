@@ -25,15 +25,15 @@ let viewing = false;
 
 let clientX = 0;
 
-
-
+let camX = 0;
+let camY = 0;
+let camZ = 0;
 
 const next = document.querySelector('#next');
 const previous = document.querySelector('#previous');
 
 let newLocation = 45 + 22.5;
 
-let location = 1;
 
 
 
@@ -262,7 +262,7 @@ const main  = () => {
   class PickHelper {
     constructor() {
       this.raycaster = new THREE.Raycaster();
-      this.raycaster.far = 300;
+      this.raycaster.far = 100;
       this.pickedObject = null;
       this.pickedObjectSavedColor = 0;
     }
@@ -342,6 +342,10 @@ const main  = () => {
         }
         if(controlsReset){
             camera.lookAt(0, 0, 0);
+        }
+
+        if(!controlsReset){
+            camera.lookAt(camX, camY, camZ);
         }
 
 
@@ -494,28 +498,16 @@ function openWindow(){
 
 next.addEventListener('click', () => {
     newLocation -= 45;
-    if(location < 8){ location ++}
-    else {location = 1}
-    console.log(location);
 });
 previous.addEventListener('click', () => {
     newLocation += 45;
-    if(location > 1){ location --}
-    else {location = 8}
-    console.log(location);
 })
 
 next.addEventListener('touchend', () => {
     newLocation -= 45;
-    if(location < 8){ location ++}
-    else {location = 1}
-    console.log(location);
 });
 previous.addEventListener('touchend', () => {
     newLocation += 45;
-    if(location > 1){ location --}
-    else {location = 8}
-    console.log(location);
 })
 
 document.addEventListener('mousemove', e => {
