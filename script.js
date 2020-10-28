@@ -265,11 +265,13 @@ const main  = () => {
       this.raycaster.far = 100;
       this.pickedObject = null;
       this.pickedObjectSavedColor = 0;
+      this.point = new THREE.Vector3(0, 0, 0);
     }
     pick(normalizedPosition, scene, camera) {
       // restore the color if there is a picked object
       if (this.pickedObject) {
         this.pickedObject = null;
+        this.point = new THREE.Vector3(0, 0, 0);
       }
 
       // cast a ray through the frustum
@@ -282,9 +284,12 @@ const main  = () => {
         if (intersectedObjects.length && this.pickedObject === null && clientX < window.innerWidth/2) {
           // pick the first object. It's the closest one
           this.pickedObject = intersectedObjects[0].object;
+          this.point = intersectedObjects[0].point;
+        //   console.log(this.point);
         //   console.log(this.pickedObject)
         } else if (intersectedObjects.length && clientX > window.innerWidth/2){
             this.pickedObject = intersectedObjects[0].object;
+            this.point = intersectedObjects[0].point;
         }
       })
     }
@@ -313,8 +318,14 @@ const main  = () => {
 
     let intro = true;
     let controlsReset = true;
+    let lookingPos = {x: 0, y: 0, z: 0}
+    let begin = false;
+    
 
     const render = () => {
+
+        let looking = false;
+        let position = null;
 
         if(camera.position.y > 30 && intro){
             camera.position.y -= camera.position.y/100;
@@ -344,9 +355,7 @@ const main  = () => {
             camera.lookAt(0, 0, 0);
         }
 
-        if(!controlsReset){
-            camera.lookAt(camX, camY, camZ);
-        }
+        // console.log(camera);
 
 
         currentObject = undefined;
@@ -360,8 +369,27 @@ const main  = () => {
                 currentObject = pickHelper.pickedObject;
                 itemSelected = true;
                 color(currentObject, true);
+                looking = true;
+                position = pickHelper.point;
+                // console.log(currentObject.name)
+            }
+        }
 
-                console.log(currentObject.name)
+        if(looking && !controlsReset){
+            lookingPos = {x: distance(lookingPos.x, position.x), y: distance(lookingPos.y, position.y), z: distance(lookingPos.z, position.z)};
+            camera.lookAt(lookingPos.x, lookingPos.y, lookingPos.z);
+            if(camera.position.z > 120){
+                camera.position.z -= 0.5
+            } 
+            if(camera.position.z < 140){
+                console.log(currentObject.name);
+            }
+        } 
+        else if(!looking && !controlsReset) {
+            lookingPos = {x: distance(lookingPos.x, 0), y: distance(lookingPos.y, 0), z: distance(lookingPos.z, 0)}
+            camera.lookAt(lookingPos.x, lookingPos.y, lookingPos.z);
+            if(camera.position.z < 149){
+                camera.position.z += 0.5;
             }
         }
 
@@ -394,6 +422,16 @@ const main  = () => {
         if( g > 0.5 && bool){ g -= 0.05/2 };
         if( b > 0 && bool){ b -= 0.1/2 };
         object.material.color.setRGB(1, g, b);
+    }
+
+    function distance(A, B){
+        if(A > B){
+            return A - Math.sqrt(Math.pow(A - B, 2))/50
+        } else if (A < B) {
+            return A + Math.sqrt(Math.pow(A - B, 2))/50
+        } else {
+            return 0;
+        }
     }
 
 
